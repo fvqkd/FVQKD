@@ -1,0 +1,12 @@
+(coq.theory
+ (name eur)
+ (package coq-mathcomp-qkd)
+ (theories quantum utils entropy HB Stdlib mathcomp mathcomp.classical mathcomp.analysis mathcomp.real_closed elpi elpi_elpi)
+ (flags -set "Default Timeout=%{env:COQ_DEFAULT_TIMEOUT=5}"
+        -w -ambiguous-paths
+        -w -notation-incompatible-prefix
+        -w -notation-overridden
+        -w -redundant-canonical-projection
+        -w -projection-no-head-constant))
+
+(include_subdirs qualified)

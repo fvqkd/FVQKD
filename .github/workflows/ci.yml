@@ -1,0 +1,46 @@
+name: FVQKD Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  dune-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    env:
+      COQ_DEFAULT_TIMEOUT: "60"
+      ASSUMPTIONS_TIMEOUT: "120"
+      CI_JOBS: "1"
+      # CoqQ (coq-mathcomp-quantum) is installed from the CoqQ repository
+      # under this account, pinned to the immutable tag rocq91-v1.0 by
+      # scripts/setup-opam-switch.
+    steps:
+      - name: Checkout FVQKD
+        uses: actions/checkout@v4
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.1
+          dune-cache: true
+
+      - name: Install dependencies
+        run: |
+          eval "$(opam env)"
+          sh ./scripts/setup-opam-switch --current
+
+      - name: Build FVQKD
+        run: |
+          eval "$(opam env)"
+          make build-ci
+
+      - name: Audit root theorem assumptions
+        run: |
+          eval "$(opam env)"
+          make audit-assumptions

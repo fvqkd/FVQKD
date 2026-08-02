@@ -1,0 +1,37 @@
+#!/bin/sh
+# Assemble a clean source distribution directory from a MANIFEST.
+#
+# Usage: scripts/distribution DISTDIR MANIFEST
+#
+# Copies every path listed in MANIFEST (one per line; blank lines and lines
+# starting with '#' are ignored) into DISTDIR, preserving directory structure,
+# then strips Coq/LaTeX build products so the resulting tree is a clean,
+# reproducible source snapshot.  Invoked by the `dist` / `distcheck` Makefile
+# targets.
+set -eu
+
+distdir=$1
+manifest=$2
+
+rm -rf "$distdir"
+mkdir -p "$distdir"
+
+while IFS= read -r entry; do
+  case "$entry" in
+    ''|\#*) continue ;;
+  esac
+  if [ ! -e "$entry" ]; then
+    echo "distribution: missing manifest entry: $entry" >&2
+    exit 1
+  fi
+  parent=$(dirname "$entry")
+  mkdir -p "$distdir/$parent"
+  cp -R "$entry" "$distdir/$parent/"
+done < "$manifest"
+
+# Strip build products so the source distribution is clean and reproducible.
+find "$distdir" \( \
+     -name '*.vo'  -o -name '*.vos' -o -name '*.vok' \
+  -o -name '*.glob' -o -name '*.v.d' -o -name '*.aux' \
+  -o -name '_build' -o -name '.DS_Store' \
+\) -exec rm -rf {} + 2>/dev/null || true

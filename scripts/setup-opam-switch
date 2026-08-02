@@ -1,0 +1,128 @@
+#!/usr/bin/env sh
+set -eu
+
+OCAML_COMPILER="ocaml-base-compiler.5.2.1"
+SWITCH_NAME="qkd-rocq91"
+USE_CURRENT_SWITCH=0
+COQ_RELEASED_REPO="https://coq.inria.fr/opam/released"
+ROCQ_RELEASED_REPO="https://rocq-prover.org/opam/released"
+# CoqQ (coq-mathcomp-quantum) is installed from its Rocq 9.1 port
+# repository, pinned to the immutable tag rocq91-v1.0 so the build, and
+# therefore the `Print Assumptions bb84_secure` trusted base, is
+# reproducible. Override by exporting COQQ_PIN (e.g. to a local path)
+# before running.
+COQQ_PIN_DEFAULT="git+https://github.com/fvqkd/CoqQ.git#rocq91-v1.0"
+COQQ_PIN_DEFAULT_SET=0
+if [ -z "${COQQ_PIN:-}" ]; then
+  COQQ_PIN_DEFAULT_SET=1
+fi
+
+usage() {
+  cat <<'EOF'
+usage: scripts/setup-opam-switch [--switch NAME] [--current]
+
+Prepare an opam switch with the dependency versions used by CI.
+
+Options:
+  --switch NAME   Create or reuse a named opam switch. Default: qkd-rocq91.
+  --current       Install into the currently active opam switch.
+  -h, --help      Show this help.
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --switch)
+      if [ "$#" -lt 2 ]; then
+        echo "setup-opam-switch: --switch requires a name" >&2
+        exit 2
+      fi
+      SWITCH_NAME="$2"
+      shift 2
+      ;;
+    --current)
+      USE_CURRENT_SWITCH=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "setup-opam-switch: unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+if ! command -v opam >/dev/null 2>&1; then
+  echo "setup-opam-switch: opam is required. Install opam and run 'opam init' first." >&2
+  exit 127
+fi
+
+if ! opam var root >/dev/null 2>&1; then
+  echo "setup-opam-switch: opam is not initialized. Run 'opam init' first." >&2
+  exit 2
+fi
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+cd "$PROJECT_ROOT"
+
+if [ "$USE_CURRENT_SWITCH" -eq 1 ]; then
+  eval "$(opam env)"
+else
+  if ! opam switch list -s 2>/dev/null | grep -qx "$SWITCH_NAME"; then
+    opam switch create "$SWITCH_NAME" "$OCAML_COMPILER"
+  fi
+  eval "$(opam env --switch="$SWITCH_NAME")"
+fi
+
+if opam repository list --short 2>/dev/null | grep -qx "coq-released"; then
+  opam repository set-url -y coq-released "$COQ_RELEASED_REPO"
+else
+  opam repository add -y coq-released "$COQ_RELEASED_REPO"
+fi
+
+if opam repository list --short 2>/dev/null | grep -qx "rocq-released"; then
+  opam repository set-url -y rocq-released "$ROCQ_RELEASED_REPO"
+else
+  opam repository add -y rocq-released "$ROCQ_RELEASED_REPO"
+fi
+
+opam update
+
+opam install -y \
+  dune.3.23.1 \
+  dune-configurator.3.23.1
+opam install -y \
+  coq-core.9.1.1 \
+  rocq-core.9.1.1 \
+  rocq-stdlib.9.1.0 \
+  rocq-elpi.3.3.1 \
+  rocq-hierarchy-builder.1.10.2
+opam install -y \
+  rocq-mathcomp-ssreflect.2.5.0 \
+  rocq-mathcomp-algebra.2.5.0 \
+  rocq-mathcomp-field.2.5.0 \
+  rocq-mathcomp-fingroup.2.5.0 \
+  rocq-mathcomp-finmap.2.2.2 \
+  rocq-mathcomp-solvable.2.5.0 \
+  rocq-mathcomp-bigenough.1.0.4 \
+  rocq-mathcomp-classical.1.16.0 \
+  rocq-mathcomp-analysis.1.16.0
+opam install -y coq-mathcomp-real-closed.2.0.3
+if [ "$COQQ_PIN_DEFAULT_SET" -eq 1 ]; then
+  COQQ_PIN="$COQQ_PIN_DEFAULT"
+fi
+opam pin add -y --no-action coq-mathcomp-quantum "$COQQ_PIN"
+opam install -y coq-mathcomp-quantum
+opam install -y --deps-only .
+
+if [ "$USE_CURRENT_SWITCH" -eq 1 ]; then
+  echo "Current opam switch is ready."
+else
+  echo "opam switch '$SWITCH_NAME' is ready."
+  echo "Optional interactive shell setup: eval \"\$(opam env --switch=$SWITCH_NAME)\""
+fi

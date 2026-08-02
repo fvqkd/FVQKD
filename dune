@@ -1,0 +1,3 @@
+; coq-mathcomp-quantum (CoqQ) is installed from its own repository
+; (https://github.com/fvqkd/CoqQ, tag rocq91-v1.0) by opam via
+; scripts/setup-opam-switch — not by this dune workspace.

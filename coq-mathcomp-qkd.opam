@@ -1,0 +1,20 @@
+opam-version: "2.0"
+maintainer: "FVQKD authors"
+synopsis: "Formal verification of QKD protocols"
+description: """
+Formal verification of BB84 quantum key distribution protocol
+using the CoqQ quantum computing library.
+"""
+depends: [
+  "coq-core" {>= "9.1.1" & < "9.2~"}
+  "rocq-core" {>= "9.1.1" & < "9.2~"}
+  "coq-mathcomp-quantum"
+  "dune" {>= "3.17"}
+  "rocq-mathcomp-ssreflect"
+  "rocq-mathcomp-algebra"
+  "rocq-mathcomp-analysis"
+  "rocq-mathcomp-classical"
+  "coq-mathcomp-real-closed"
+  "rocq-hierarchy-builder"
+]
+build: ["dune" "build" "-p" name "-j" jobs]

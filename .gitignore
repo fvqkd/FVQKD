@@ -1,0 +1,14 @@
+*.aux
+*.glob
+*.bbl
+*.bib
+*.blg
+*.log
+*.out
+*.gz
+*.vtc
+*.fls
+*.fdb_latexmk
+_build/
+.DS_Store
+tmp/
